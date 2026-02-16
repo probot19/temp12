@@ -1,28 +1,32 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class CardsHandler : MonoBehaviour
 {
     [Header("Values")]
-    [SerializeField] private RectTransform _Container;
     [SerializeField] private GameObject _CardPrefab;
+    [SerializeField] private GameObject _ClickBlocker;
+    [SerializeField] private RectTransform _Container;
     [SerializeField] private SpriteConfig _SpriteConfig;
     [SerializeField] private int _Columns;
     [SerializeField] private int _Rows;
-    [SerializeField] private float _Spacing;
 
     private List<Card> mCards = new List<Card>();
     private List<Card> mSelectedCards = new List<Card>();
     private const int CardSelectionCount = 2;
+    private const float _Spacing = 10;
 
     void Awake()
     {
         CardsManager.cardClick += OnCardClick;
+        CardsManager.cardsReady += OnCardsReady;
     }
 
     void OnDestroy()
     {
         CardsManager.cardClick -= OnCardClick;
+        CardsManager.cardsReady -= OnCardsReady;
     }
 
     private void OnCardClick(Card card)
@@ -37,30 +41,44 @@ public class CardsHandler : MonoBehaviour
 
         if (mSelectedCards.Count == CardSelectionCount)
         {
-            if (mSelectedCards[0].GetIndex() == mSelectedCards[1].GetIndex())
-            {
-                Debug.LogError($"Cards Match Id : {mSelectedCards[0].GetIndex()}");
-                mSelectedCards[0].Dumped();
-                mSelectedCards[1].Dumped();
-                HUDManager._Instance.OnCardsMatched();
-            }
-            else
-            {
-                mSelectedCards[0].Reset();
-                mSelectedCards[1].Reset();
-            }
-            mSelectedCards.Clear();
-            HUDManager._Instance.OnTurn();
+            StartCoroutine(ResolveSelection());
+        }
+    }
+
+    private void OnCardsReady()
+    {
+        _ClickBlocker.SetActive(false);
+    }
+
+    IEnumerator ResolveSelection()
+    {
+        _ClickBlocker.SetActive(true);
+        yield return new WaitForSeconds(0.7f);
+
+        if (mSelectedCards[0].GetIndex() == mSelectedCards[1].GetIndex())
+        {
+            mSelectedCards[0].Dumped();
+            mSelectedCards[1].Dumped();
+
+            HUDManager._Instance.OnCardsMatched();
         }
         else
         {
-
+            mSelectedCards[0].Reset();
+            mSelectedCards[1].Reset();
         }
+
+        mSelectedCards.Clear();
+
+        HUDManager._Instance.OnTurn();
+        _ClickBlocker.SetActive(false);
     }
+
 
     void Start()
     {
         SpawnCards();
+        _ClickBlocker.SetActive(true);
     }
 
     private void SpawnCards()
